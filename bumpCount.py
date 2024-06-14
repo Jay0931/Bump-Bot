@@ -2,6 +2,8 @@ import discord
 from discord.ext import tasks, commands
 from dotenv import load_dotenv
 import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # Load the environment variables from the .env file
 load_dotenv()
@@ -64,6 +66,24 @@ async def update_leaderboard():
         if leaderboard_message_id is not None:
             message = await channel.fetch_message(leaderboard_message_id)
             await message.edit(content=leaderboard_message)
+
+# Keep-Alive HTTP Server
+class KeepAliveHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b"I'm alive")
+
+def run_keep_alive_server():
+    server_address = ('', 8080)
+    httpd = HTTPServer(server_address, KeepAliveHandler)
+    httpd.serve_forever()
+
+# Start the keep-alive server in a background thread
+keep_alive_thread = threading.Thread(target=run_keep_alive_server)
+keep_alive_thread.daemon = True
+keep_alive_thread.start()
 
 # Run the bot with the token
 bot.run(TOKEN)
